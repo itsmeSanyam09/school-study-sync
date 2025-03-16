@@ -30,6 +30,11 @@ export default function PlannerPage() {
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/subjects", selectedSubject, "tasks"],
+    queryFn: async () => {
+      if (!selectedSubject) return [];
+      const res = await apiRequest("GET", `/api/subjects/${selectedSubject}/tasks`);
+      return res.json();
+    },
     enabled: !!selectedSubject,
   });
 
