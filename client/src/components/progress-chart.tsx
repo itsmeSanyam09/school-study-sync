@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import type { Subject, Task } from "@shared/schema";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
 
@@ -12,25 +12,25 @@ interface ProgressChartProps {
 }
 
 export default function ProgressChart({ subjects = [] }: ProgressChartProps) {
-  const allTasksQueries = subjects.map(subject => 
-    useQuery<Task[]>({
-      queryKey: ["/api/subjects", subject.id, "tasks"],
+  const taskQueries = useQueries({
+    queries: subjects.map(subject => ({
+      queryKey: ["/api/subjects", subject.id, "tasks"] as const,
       queryFn: async () => {
         const res = await apiRequest("GET", `/api/subjects/${subject.id}/tasks`);
-        return res.json();
+        return res.json() as Promise<Task[]>;
       }
-    })
-  );
+    }))
+  });
 
-  const isLoading = allTasksQueries.some(query => query.isLoading);
+  const isLoading = taskQueries.some(query => query.isLoading);
 
   const data = useMemo(() => {
     if (isLoading) return [];
     
-    const totalTasks = allTasksQueries.reduce((acc, query) => 
+    const totalTasks = taskQueries.reduce((acc, query) => 
       acc + (query.data?.length || 0), 0);
     
-    const completedTasks = allTasksQueries.reduce((acc, query) => 
+    const completedTasks = taskQueries.reduce((acc, query) => 
       acc + (query.data?.filter(task => task.completed)?.length || 0), 0);
 
     const completedSubjects = subjects.filter(s => s.completed).length;
@@ -43,7 +43,7 @@ export default function ProgressChart({ subjects = [] }: ProgressChartProps) {
       { name: 'Completed', value: overallProgress },
       { name: 'Pending', value: 100 - overallProgress }
     ];
-  }, [subjects, allTasksQueries, isLoading]);
+  }, [subjects, taskQueries, isLoading]);
 
   const COLORS = ['hsl(var(--primary))', 'hsl(var(--muted))'];
 
@@ -64,7 +64,7 @@ export default function ProgressChart({ subjects = [] }: ProgressChartProps) {
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
+                innerRadius={40}
                 outerRadius={80}
                 paddingAngle={5}
                 dataKey="value"
