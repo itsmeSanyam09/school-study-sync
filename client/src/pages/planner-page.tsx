@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSubjectSchema, insertTaskSchema } from "@shared/schema";
+import type { Subject, Task } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,22 +22,20 @@ import * as z from 'zod';
 export default function PlannerPage() {
   const [selectedSubject, setSelectedSubject] = useState<number | null>(null);
 
-  const { data: subjects, isLoading: subjectsLoading } = useQuery({
+  const { data: subjects = [], isLoading: subjectsLoading } = useQuery<Subject[]>({
     queryKey: ["/api/subjects"],
   });
 
-  const { data: tasks, isLoading: tasksLoading } = useQuery({
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/subjects", selectedSubject, "tasks"],
     enabled: !!selectedSubject,
   });
 
   const subjectForm = useForm({
-    resolver: zodResolver(insertSubjectSchema.extend({
-      examDate: z.string().transform((str) => new Date(str))
-    })),
+    resolver: zodResolver(insertSubjectSchema),
     defaultValues: {
       name: "",
-      examDate: new Date().toISOString().slice(0, 16) // Format: YYYY-MM-DDThh:mm
+      examDate: new Date().toISOString().slice(0, 16)
     }
   });
 
@@ -45,12 +44,8 @@ export default function PlannerPage() {
   });
 
   const subjectMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const formattedData = {
-        ...data,
-        examDate: new Date(data.examDate).toISOString()
-      };
-      const res = await apiRequest("POST", "/api/subjects", formattedData);
+    mutationFn: async (data: z.infer<typeof insertSubjectSchema>) => {
+      const res = await apiRequest("POST", "/api/subjects", data);
       return res.json();
     },
     onSuccess: () => {
@@ -60,7 +55,7 @@ export default function PlannerPage() {
   });
 
   const taskMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: z.infer<typeof insertTaskSchema>) => {
       const res = await apiRequest("POST", "/api/tasks", data);
       return res.json();
     },
@@ -157,12 +152,12 @@ export default function PlannerPage() {
                 ) : (
                   <ScrollArea className="h-[400px] pr-4">
                     <div className="space-y-4">
-                      {subjects?.map((subject: any) => (
+                      {subjects.map((subject) => (
                         <div key={subject.id} className="space-y-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               <Checkbox
-                                checked={subject.completed}
+                                checked={subject.completed || false}
                                 onCheckedChange={(checked) =>
                                   toggleSubjectMutation.mutate({
                                     id: subject.id,
@@ -180,10 +175,10 @@ export default function PlannerPage() {
 
                           {selectedSubject === subject.id && tasks && (
                             <div className="pl-6 space-y-2">
-                              {tasks.map((task: any) => (
+                              {tasks.map((task) => (
                                 <div key={task.id} className="flex items-center space-x-2">
                                   <Checkbox
-                                    checked={task.completed}
+                                    checked={task.completed || false}
                                     onCheckedChange={(checked) =>
                                       toggleTaskMutation.mutate({
                                         id: task.id,
@@ -200,7 +195,7 @@ export default function PlannerPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setSelectedSubject(subject.id)}
+                            onClick={() => setSelectedSubject(selectedSubject === subject.id ? null : subject.id)}
                           >
                             {selectedSubject === subject.id ? "Hide Tasks" : "Show Tasks"}
                           </Button>
@@ -215,7 +210,7 @@ export default function PlannerPage() {
           </div>
 
           <div className="space-y-6">
-            <ProgressChart subjects={subjects || []} />
+            <ProgressChart subjects={subjects} />
             <AIChatbot />
           </div>
         </div>

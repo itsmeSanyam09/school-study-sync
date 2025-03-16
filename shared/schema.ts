@@ -39,10 +39,15 @@ export const insertUserSchema = createInsertSchema(users).pick({
   grade: true
 });
 
-export const insertSubjectSchema = createInsertSchema(subjects).pick({
-  name: true,
-  examDate: true
-});
+// Modified to accept ISO string for examDate
+export const insertSubjectSchema = createInsertSchema(subjects)
+  .pick({
+    name: true,
+    examDate: true
+  })
+  .extend({
+    examDate: z.string().transform(str => new Date(str))
+  });
 
 export const insertTaskSchema = createInsertSchema(tasks).pick({
   description: true,
