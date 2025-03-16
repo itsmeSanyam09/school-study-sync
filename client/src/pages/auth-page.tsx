@@ -21,11 +21,20 @@ export default function AuthPage() {
   }, [user, setLocation]);
 
   const loginForm = useForm({
-    resolver: zodResolver(insertUserSchema.pick({ username: true, password: true }))
+    resolver: zodResolver(insertUserSchema.pick({ username: true, password: true })),
+    defaultValues: {
+      username: '',
+      password: ''
+    }
   });
 
   const registerForm = useForm({
-    resolver: zodResolver(insertUserSchema)
+    resolver: zodResolver(insertUserSchema),
+    defaultValues: {
+      username: '',
+      password: '',
+      grade: ''
+    }
   });
 
   return (
