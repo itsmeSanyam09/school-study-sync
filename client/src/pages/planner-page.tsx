@@ -18,8 +18,10 @@ import PomodoroTimer from "@/components/pomodoro-timer";
 import ProgressChart from "@/components/progress-chart";
 import { Loader2, Plus, Calendar } from "lucide-react";
 import * as z from 'zod';
+import { useToast } from "@/hooks/use-toast";
 
 export default function PlannerPage() {
+  const { toast } = useToast();
   const [selectedSubject, setSelectedSubject] = useState<number | null>(null);
 
   const { data: subjects = [], isLoading: subjectsLoading } = useQuery<Subject[]>({
@@ -82,6 +84,29 @@ export default function PlannerPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subjects"] });
+    },
+  });
+
+  const fetchChaptersMutation = useMutation({
+    mutationFn: async (subjectId: number) => {
+      const res = await apiRequest("POST", `/api/subjects/${subjectId}/fetch-chapters`);
+      return res.json();
+    },
+    onSuccess: (_, subjectId) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subjects", subjectId, "tasks"] });
+      toast({
+        id: crypto.randomUUID(),
+        title: "Chapters fetched successfully",
+        description: "Tasks have been created for each chapter",
+      });
+    },
+    onError: (error) => {
+      toast({
+        id: crypto.randomUUID(),
+        title: "Error fetching chapters",
+        description: "Please make sure your grade is set in your profile",
+        variant: "destructive",
+      });
     },
   });
 
@@ -167,9 +192,23 @@ export default function PlannerPage() {
                               />
                               <span className="font-medium">{subject.name}</span>
                             </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Calendar className="h-4 w-4 mr-1" />
-                              {new Date(subject.examDate).toLocaleDateString()}
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => fetchChaptersMutation.mutate(subject.id)}
+                                disabled={fetchChaptersMutation.isPending}
+                              >
+                                {fetchChaptersMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  "Fetch Chapters"
+                                )}
+                              </Button>
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Calendar className="h-4 w-4 mr-1" />
+                                {new Date(subject.examDate).toLocaleDateString()}
+                              </div>
                             </div>
                           </div>
 

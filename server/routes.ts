@@ -4,6 +4,36 @@ import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertSubjectSchema, insertTaskSchema, insertStudyLogSchema } from "@shared/schema";
 import { z } from "zod";
+import fetch from "node-fetch";
+
+type OpenRouterResponse = {
+  choices: Array<{
+    message: {
+      content: string
+    }
+  }>
+}
+
+async function fetchNCERTChapters(subject: string, grade: string) {
+  try {
+    const response = await fetch(`https://ncert.nic.in/textbook.php?${subject.toLowerCase()}${grade}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch NCERT chapters');
+    }
+    const html = await response.text();
+
+    // Extract chapter titles from the HTML
+    // This is a simplified example - in production we'd use a proper HTML parser
+    const chapters = html.match(/<h[2-4][^>]*>(Chapter \d+:[^<]+)<\/h[2-4]>/g)
+      ?.map(match => match.replace(/<\/?h[2-4][^>]*>/g, '').trim())
+      || [];
+
+    return chapters;
+  } catch (error) {
+    console.error('Error fetching NCERT chapters:', error);
+    return [];
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -134,11 +164,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error("Failed to get AI response");
       }
 
-      const data = await response.json();
+      const data = await response.json() as OpenRouterResponse;
       res.json({ response: data.choices[0].message.content });
     } catch (error) {
       console.error("Error in chat request:", error);
       res.status(500).json({ error: "Failed to process chat request" });
+    }
+  });
+
+  app.post("/api/subjects/:id/fetch-chapters", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const subjectId = parseInt(req.params.id);
+      const subject = await storage.getSubject(subjectId);
+
+      if (!subject) {
+        return res.status(404).json({ error: "Subject not found" });
+      }
+
+      if (!req.user.grade) {
+        return res.status(400).json({ error: "User grade is not set" });
+      }
+
+      const chapters = await fetchNCERTChapters(subject.name, req.user.grade);
+
+      // Create tasks for each chapter
+      const tasks = await Promise.all(
+        chapters.map(chapter =>
+          storage.createTask({
+            subjectId,
+            description: chapter,
+            completed: false
+          })
+        )
+      );
+
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching chapters:", error);
+      res.status(500).json({ error: "Failed to fetch chapters" });
     }
   });
 

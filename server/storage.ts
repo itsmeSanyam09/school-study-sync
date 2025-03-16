@@ -75,6 +75,10 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
+  async getSubject(id: number): Promise<Subject | undefined> {
+    return this.subjects.get(id);
+  }
+
   async getTask(id: number): Promise<Task | undefined> {
     return this.tasks.get(id);
   }

@@ -51,7 +51,9 @@ export const insertSubjectSchema = createInsertSchema(subjects)
 
 export const insertTaskSchema = createInsertSchema(tasks).pick({
   description: true,
-  subjectId: true
+  subjectId: true,
+}).extend({
+  completed: z.boolean().optional().default(false)
 });
 
 export const insertStudyLogSchema = createInsertSchema(studyLogs).pick({
