@@ -16,16 +16,30 @@ type OpenRouterResponse = {
 
 async function fetchNCERTChapters(subject: string, grade: string) {
   try {
-    // Generate sample chapters for testing based on subject and grade
-    const sampleChapters = [
-      `Chapter 1: Introduction to ${subject}`,
-      `Chapter 2: Basic Concepts of ${subject}`,
-      `Chapter 3: Advanced Topics in ${subject}`,
-      `Chapter 4: Practice Problems for ${subject}`,
-      `Chapter 5: Applications of ${subject}`,
-    ];
+    const prompt = `Generate 5 realistic chapter names for ${subject} textbook for ${grade}. Format each chapter as "Chapter N: Title". Only return the chapter names, no additional text.`;
 
-    return sampleChapters;
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST", 
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to get AI response");
+    }
+
+    const data = await response.json() as OpenRouterResponse;
+    const chapters = data.choices[0].message.content
+      .split('\n')
+      .filter(line => line.trim().length > 0);
+
+    return chapters;
   } catch (error) {
     console.error('Error generating chapters:', error);
     throw new Error('Failed to generate chapters');
