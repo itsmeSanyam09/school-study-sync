@@ -10,65 +10,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/subjects", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const subjects = await storage.getSubjectsForUser(req.user.id);
-    res.json(subjects);
+    try {
+      const subjects = await storage.getSubjectsForUser(req.user.id);
+      res.json(subjects);
+    } catch (error) {
+      console.error("Error fetching subjects:", error);
+      res.status(500).json({ error: "Failed to fetch subjects" });
+    }
   });
 
   app.post("/api/subjects", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const subjectData = insertSubjectSchema.parse(req.body);
-    const subject = await storage.createSubject(req.user.id, subjectData);
-    res.status(201).json(subject);
+    try {
+      const subjectData = insertSubjectSchema.parse(req.body);
+      const subject = await storage.createSubject(req.user.id, subjectData);
+      res.status(201).json(subject);
+    } catch (error) {
+      console.error("Error creating subject:", error);
+      res.status(400).json({ error: "Failed to create subject" });
+    }
   });
 
   app.patch("/api/subjects/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const subject = await storage.updateSubject(parseInt(req.params.id), req.body);
-    res.json(subject);
+    try {
+      const subject = await storage.updateSubject(parseInt(req.params.id), req.body);
+      res.json(subject);
+    } catch (error) {
+      console.error("Error updating subject:", error);
+      res.status(404).json({ error: "Subject not found or update failed" });
+    }
   });
 
   app.get("/api/subjects/:id/tasks", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const tasks = await storage.getTasksForSubject(parseInt(req.params.id));
-    res.json(tasks);
+    try {
+      const tasks = await storage.getTasksForSubject(parseInt(req.params.id));
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({ error: "Failed to fetch tasks" });
+    }
   });
 
   app.post("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const taskData = insertTaskSchema.parse(req.body);
-    const task = await storage.createTask(taskData);
-    res.status(201).json(task);
+    try {
+      const taskData = insertTaskSchema.parse(req.body);
+      const task = await storage.createTask(taskData);
+      res.status(201).json(task);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      res.status(400).json({ error: "Failed to create task" });
+    }
   });
 
   app.patch("/api/tasks/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const task = await storage.updateTask(parseInt(req.params.id), req.body);
-    res.json(task);
+    try {
+      const taskId = parseInt(req.params.id);
+      const updates = req.body;
+
+      // First check if task exists
+      const existingTask = await storage.getTask(taskId);
+      if (!existingTask) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      const task = await storage.updateTask(taskId, updates);
+      res.json(task);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ error: "Failed to update task" });
+    }
   });
 
   app.post("/api/study-logs", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const logData = insertStudyLogSchema.parse(req.body);
-    const log = await storage.createStudyLog(req.user.id, logData);
-    res.status(201).json(log);
+    try {
+      const logData = insertStudyLogSchema.parse(req.body);
+      const log = await storage.createStudyLog(req.user.id, logData);
+      res.status(201).json(log);
+    } catch (error) {
+      console.error("Error creating study log:", error);
+      res.status(400).json({ error: "Failed to create study log" });
+    }
   });
 
   app.get("/api/study-logs", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const logs = await storage.getStudyLogsForUser(req.user.id);
-    res.json(logs);
+    try {
+      const logs = await storage.getStudyLogsForUser(req.user.id);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching study logs:", error);
+      res.status(500).json({ error: "Failed to fetch study logs" });
+    }
   });
 
   app.post("/api/chat", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    
-    const messageSchema = z.object({
-      message: z.string().min(1)
-    });
-    
-    const { message } = messageSchema.parse(req.body);
 
     try {
+      const messageSchema = z.object({
+        message: z.string().min(1)
+      });
+
+      const { message } = messageSchema.parse(req.body);
+
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -88,6 +137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = await response.json();
       res.json({ response: data.choices[0].message.content });
     } catch (error) {
+      console.error("Error in chat request:", error);
       res.status(500).json({ error: "Failed to process chat request" });
     }
   });

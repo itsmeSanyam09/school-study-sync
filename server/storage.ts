@@ -13,7 +13,7 @@ export class MemStorage implements IStorage {
   private subjects: Map<number, Subject>;
   private tasks: Map<number, Task>;
   private studyLogs: Map<number, StudyLog>;
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
   currentId: { [key: string]: number };
 
   constructor() {
@@ -44,7 +44,12 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentId.users++;
-    const user: User = { ...insertUser, id, totalStudyHours: 0 };
+    const user: User = { 
+      ...insertUser, 
+      id, 
+      totalStudyHours: 0,
+      grade: insertUser.grade || null 
+    };
     this.users.set(id, user);
     return user;
   }
@@ -68,6 +73,10 @@ export class MemStorage implements IStorage {
     const updated = { ...subject, ...updates };
     this.subjects.set(id, updated);
     return updated;
+  }
+
+  async getTask(id: number): Promise<Task | undefined> {
+    return this.tasks.get(id);
   }
 
   async getTasksForSubject(subjectId: number): Promise<Task[]> {
