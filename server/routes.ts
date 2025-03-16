@@ -16,7 +16,7 @@ type OpenRouterResponse = {
 
 async function fetchNCERTChapters(subject: string, grade: string) {
   try {
-    const prompt = `Generate 5 realistic chapter names for ${subject} textbook for ${grade}. Format each chapter as "Chapter N: Title". Only return the chapter names, no additional text.`;
+    const prompt = `List the exact CBSE NCERT chapter names for ${subject} ${grade} as per the latest curriculum. Format each chapter as "Chapter N: Title". Only list real NCERT chapters, no creative additions.`;
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST", 
