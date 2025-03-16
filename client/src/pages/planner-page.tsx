@@ -16,6 +16,7 @@ import AIChatbot from "@/components/ai-chatbot";
 import PomodoroTimer from "@/components/pomodoro-timer";
 import ProgressChart from "@/components/progress-chart";
 import { Loader2, Plus, Calendar } from "lucide-react";
+import * as z from 'zod';
 
 export default function PlannerPage() {
   const [selectedSubject, setSelectedSubject] = useState<number | null>(null);
@@ -30,7 +31,13 @@ export default function PlannerPage() {
   });
 
   const subjectForm = useForm({
-    resolver: zodResolver(insertSubjectSchema),
+    resolver: zodResolver(insertSubjectSchema.extend({
+      examDate: z.string().transform((str) => new Date(str))
+    })),
+    defaultValues: {
+      name: "",
+      examDate: new Date().toISOString().slice(0, 16) // Format: YYYY-MM-DDThh:mm
+    }
   });
 
   const taskForm = useForm({
@@ -39,7 +46,11 @@ export default function PlannerPage() {
 
   const subjectMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/subjects", data);
+      const formattedData = {
+        ...data,
+        examDate: new Date(data.examDate).toISOString()
+      };
+      const res = await apiRequest("POST", "/api/subjects", formattedData);
       return res.json();
     },
     onSuccess: () => {
