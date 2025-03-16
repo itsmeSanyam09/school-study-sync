@@ -16,22 +16,19 @@ type OpenRouterResponse = {
 
 async function fetchNCERTChapters(subject: string, grade: string) {
   try {
-    const response = await fetch(`https://ncert.nic.in/textbook.php?${subject.toLowerCase()}${grade}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch NCERT chapters');
-    }
-    const html = await response.text();
+    // Generate sample chapters for testing based on subject and grade
+    const sampleChapters = [
+      `Chapter 1: Introduction to ${subject}`,
+      `Chapter 2: Basic Concepts of ${subject}`,
+      `Chapter 3: Advanced Topics in ${subject}`,
+      `Chapter 4: Practice Problems for ${subject}`,
+      `Chapter 5: Applications of ${subject}`,
+    ];
 
-    // Extract chapter titles from the HTML
-    // This is a simplified example - in production we'd use a proper HTML parser
-    const chapters = html.match(/<h[2-4][^>]*>(Chapter \d+:[^<]+)<\/h[2-4]>/g)
-      ?.map(match => match.replace(/<\/?h[2-4][^>]*>/g, '').trim())
-      || [];
-
-    return chapters;
+    return sampleChapters;
   } catch (error) {
-    console.error('Error fetching NCERT chapters:', error);
-    return [];
+    console.error('Error generating chapters:', error);
+    throw new Error('Failed to generate chapters');
   }
 }
 
@@ -187,7 +184,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "User grade is not set" });
       }
 
+      console.log(`Fetching chapters for subject: ${subject.name}, grade: ${req.user.grade}`);
       const chapters = await fetchNCERTChapters(subject.name, req.user.grade);
+      console.log(`Generated chapters:`, chapters);
+
+      if (!chapters || chapters.length === 0) {
+        return res.status(404).json({ error: "No chapters found for this subject" });
+      }
 
       // Create tasks for each chapter
       const tasks = await Promise.all(
@@ -200,6 +203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         )
       );
 
+      console.log(`Created tasks:`, tasks);
       res.json(tasks);
     } catch (error) {
       console.error("Error fetching chapters:", error);
