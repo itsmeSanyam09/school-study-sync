@@ -5,13 +5,13 @@ import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import type { Subject, Task } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { Loader2 } from "lucide-react";
 
 interface ProgressChartProps {
   subjects: Subject[];
 }
 
-export default function ProgressChart({ subjects }: ProgressChartProps) {
-  // Fetch all tasks for all subjects
+export default function ProgressChart({ subjects = [] }: ProgressChartProps) {
   const allTasksQueries = subjects.map(subject => 
     useQuery<Task[]>({
       queryKey: ["/api/subjects", subject.id, "tasks"],
@@ -22,7 +22,11 @@ export default function ProgressChart({ subjects }: ProgressChartProps) {
     })
   );
 
+  const isLoading = allTasksQueries.some(query => query.isLoading);
+
   const data = useMemo(() => {
+    if (isLoading) return [];
+    
     const totalTasks = allTasksQueries.reduce((acc, query) => 
       acc + (query.data?.length || 0), 0);
     
@@ -39,18 +43,22 @@ export default function ProgressChart({ subjects }: ProgressChartProps) {
       { name: 'Completed', value: overallProgress },
       { name: 'Pending', value: 100 - overallProgress }
     ];
-  }, [subjects, allTasksQueries]);
+  }, [subjects, allTasksQueries, isLoading]);
 
   const COLORS = ['hsl(var(--primary))', 'hsl(var(--muted))'];
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Study Progress</CardTitle>
+        <CardTitle>Progress</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
+        {isLoading ? (
+          <div className="flex justify-center p-4">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie
                 data={data}
@@ -66,16 +74,10 @@ export default function ProgressChart({ subjects }: ProgressChartProps) {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Legend 
-                verticalAlign="bottom" 
-                height={36}
-                formatter={(value) => (
-                  <span className="text-sm text-foreground">{value}</span>
-                )}
-              />
+              <Legend />
             </PieChart>
           </ResponsiveContainer>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
